@@ -1,0 +1,22 @@
+<configuration>
+    <input>
+        <net-file value="ifsc_map.net.xml"/>
+        <route-files value="routes.rou.xml"/>
+    </input>
+
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+        <step-length value="0.1"/>
+    </time>
+
+    <processing>
+        <ignore-junction-blocker value="20"/>
+        <time-to-teleport value="-1"/>
+    </processing>
+
+    <gui_only>
+        <start value="true"/>
+        <delay value="110"/>
+    </gui_only>
+</configuration>
