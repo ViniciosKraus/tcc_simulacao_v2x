@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+    <copy file="ifsc_map.net.xml" />
+    <copy file="tcc_scenario.rou.xml" />
+    <copy file="tcc.sumocfg" type="config" />
+</launch>

@@ -1,12 +1,12 @@
 <configuration>
     <input>
         <net-file value="ifsc_map.net.xml"/>
-        <route-files value="routes.rou.xml"/>
+        <route-files value="tcc_scenario.rou.xml"/>
     </input>
 
     <time>
         <begin value="0"/>
-        <end value="3600"/>
+        <end value="200"/>
         <step-length value="0.1"/>
     </time>
 
@@ -16,7 +16,7 @@
     </processing>
 
     <gui_only>
-        <start value="true"/>
-        <delay value="110"/>
+        <start value="false"/>
+        <delay value="250"/>
     </gui_only>
 </configuration>

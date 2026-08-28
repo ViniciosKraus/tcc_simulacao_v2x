@@ -1,5 +1,0 @@
-<launch>
-    <copy file="ifsc_map.net.xml"/>
-    <copy file="routes.rou.xml"/>
-    <copy file="ifsc_2.sumocfg" config="true"/>
-</launch>

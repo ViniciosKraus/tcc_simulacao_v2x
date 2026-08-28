@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<routes>
+
+    <vType
+        id="car"
+        accel="2.6"
+        decel="4.5"
+        sigma="0.5"
+        length="5.0"
+        minGap="2.5"
+        maxSpeed="16.67"
+    />
+
+    <route
+        id="route_tcc"
+        edges="-117970621 1414545449 1414545447 -860271777 -259263000#3 -259263000#2 860271778#1 271054100#1"
+    />
+
+    <vehicle
+        id="V1"
+        type="car"
+        depart="0"
+        departLane="best"
+        departSpeed="10"
+        departPos="500"
+        route="route_tcc"
+    />
+
+    <vehicle
+        id="V2"
+        type="car"
+        depart="1"
+        departLane="best"
+        departSpeed="10"
+        departPos="450"
+        route="route_tcc"
+    />
+
+</routes>
