@@ -26,8 +26,9 @@ void AccidentAlertApp::initialize(int stage)
         reactionSpeedFactor = par("reactionSpeedFactor").doubleValue();
 
         /*
-         * Carrega os parametros configurados no omnetpp.ini.
-         * Isso permite que ScenarioB use 10 m e ScenarioC use 5 m.
+         * Carrega os parametros definidos no omnetpp.ini.
+         * Dessa forma, cada cenario pode configurar sua propria
+         * estrategia de reacao e seus parametros de controle.
          */
         safeDistance = par("safeDistance").doubleValue();
 
@@ -35,9 +36,9 @@ void AccidentAlertApp::initialize(int stage)
         reactionMonitorInterval = par("reactionMonitorInterval");
 
         /*
-         * Apenas o primeiro veiculo gera o alerta.
-         * No ScenarioA, o acidente continua existindo,
-         * mas nenhuma mensagem V2X e criada.
+         * Somente o primeiro veiculo inicia a transmissao do
+         * alerta de acidente. No Scenario A, o acidente continua
+         * ocorrendo, mas a comunicacao V2X permanece desativada.
          */
         if (getParentModule()->getIndex() == 0 && enableV2X) {
             accidentMsg = new cMessage("accidentAlert");
@@ -45,8 +46,8 @@ void AccidentAlertApp::initialize(int stage)
         }
 
         /*
-         * Somente veiculos que podem receber o alerta
-         * precisam monitorar uma possivel reacao.
+         * Veiculos receptores criam o temporizador usado para
+         * atualizar periodicamente o controle da reacao.
          */
         if (getParentModule()->getIndex() != 0 && enableV2X) {
             reactionMonitorMsg = new cMessage("reactionMonitor");
@@ -90,20 +91,20 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
     else if (msg == reactionMonitorMsg && reactionActive) {
 
         /*
-         * Encerra a reacao apos o tempo configurado.
-         * A partir daqui o veiculo volta ao controle normal do SUMO.
+         * Ao atingir o tempo minimo configurado, inicia a etapa
+         * de verificacao para decidir quando o controle pode
+         * retornar ao comportamento normal do SUMO.
          */
         if (simTime() - alertReceiveTime >= reactionDuration) {
 
             /*
-             * Apos o tempo minimo de reacao, V2 NAO devolve
-             * imediatamente o controle ao SUMO.
+             * A reacao nao termina automaticamente apenas porque
+             * o tempo configurado foi atingido. Se o lider ainda
+             * estiver parado, V2 permanece parado para evitar
+             * uma nova aproximacao do veiculo acidentado.
              *
-             * Enquanto V1 estiver parado, V2 permanece parado
-             * devido a reacao V2X.
-             *
-             * O SUMO somente reassume quando o veiculo lider
-             * voltar a se mover.
+             * O controle normal do SUMO e liberado quando o lider
+             * volta a se mover.
              */
             auto leaderInfo =
                 traciVehicle->getLeader(1000.0);
@@ -119,8 +120,8 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                     leaderVehicle.getSpeed();
 
                 /*
-                 * V1 ainda esta parado:
-                 * mantenha V2 parado e continue monitorando.
+                 * O lider ainda esta parado. V2 permanece parado
+                 * e o monitoramento continua ativo.
                  */
                 if (leaderSpeed <= 0.5) {
 
@@ -145,9 +146,8 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                 }
 
                 /*
-                 * V1 voltou a se mover.
-                 * Agora o SUMO pode retomar o controle normal
-                 * e V2 volta a seguir sua rota.
+                 * O lider voltou a se mover. A reacao V2X termina
+                 * e o controle de velocidade retorna ao SUMO.
                  */
                 reactionActive = false;
                 haveLastReactionPosition = false;
@@ -176,8 +176,8 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
             }
 
             /*
-             * Se nao houver lider identificado, por seguranca
-             * V2 permanece parado e continua monitorando.
+             * Sem um lider identificado, V2 permanece parado
+             * e continua monitorando a situacao.
              */
             traciVehicle->setSpeed(0);
 
@@ -202,8 +202,9 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
         }
 
         /*
-        * Verifica se a velocidade alvo foi atingida.
-        */
+         * Registra o instante em que a velocidade de reacao
+         * e atingida pela primeira vez.
+         */
         if (!reducedSpeedReached &&
             currentSpeed <= reactionTargetSpeed + 0.1) {
 
@@ -222,17 +223,17 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
         }
 
             /*
-            * Recalcula continuamente a velocidade segura
-            * utilizando a distancia atual ate o lider.
-            */
+             * Recalcula a velocidade de controle com base na
+             * situacao atual do V2 e na distancia ate o lider.
+             */
             double safeReactionSpeed =
                 calculateSafeReactionSpeed(currentSpeed);
 
                     /*
-                    * Essas regras pertencem apenas a estrategia atual.
-                    * A estrategia progressive controla diretamente
-                    * a velocidade em cada ciclo.
-                    */
+                     * Na estrategia "current", preservamos a referencia
+                     * de velocidade definida no instante do alerta
+                     * quando nao ha necessidade de uma nova reducao.
+                     */
                     if (reactionStrategy == "current") {
 
                         if (currentLeaderDistance < 0.0) {
@@ -247,15 +248,11 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                     }
 
                     /*
-                     * Para o Scenario D, o calculo de
-                     * calculateSafeReactionSpeed() define a
-                     * desaceleracao dinamica.
-                     *
-                     * Aqui limitamos apenas a variacao de
-                     * velocidade deste intervalo.
-                     *
-                     * O limite vem de maxReactionDecel e nao
-                     * representa a desaceleracao normal.
+                     * Na estrategia "planned", a velocidade calculada
+                     * e limitada pela desaceleracao maxima configurada
+                     * para o veiculo no SUMO. O limite e aplicado por
+                     * intervalo de controle para evitar uma variacao
+                     * de velocidade maior que a permitida.
                      */
                     if (reactionStrategy == "planned") {
 
@@ -278,9 +275,8 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                             );
 
                         /*
-                         * Nunca pede ao SUMO uma velocidade
-                         * menor do que a permitida pelo limite
-                         * de desaceleracao deste ciclo.
+                         * Restringe a variacao de velocidade ao limite
+                         * de desaceleracao permitido neste intervalo.
                          */
                         safeReactionSpeed =
                             std::max(
@@ -289,8 +285,8 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                             );
 
                         /*
-                         * Nunca aumenta artificialmente a
-                         * velocidade durante a frenagem.
+                         * Durante a reacao planejada, a velocidade
+                         * nao pode aumentar artificialmente.
                          */
                         safeReactionSpeed =
                             std::min(
@@ -313,10 +309,9 @@ void AccidentAlertApp::handleSelfMsg(cMessage* msg)
                 << endl;
 
         /*
-        * Continua o controle enquanto a reacao estiver ativa.
-        *
-        * O controle e atualizado a cada 0,1 s.
-        */
+         * Mantem o controle da reacao enquanto ela estiver ativa.
+         * A velocidade e reavaliada a cada intervalo configurado.
+         */
         scheduleAt(
             simTime() + reactionMonitorInterval,
             reactionMonitorMsg
@@ -347,9 +342,11 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
     currentLeaderDistance = leaderDistance;
 
     /*
-     * =========================================================
-     * SCENARIO B - ESTRATEGIA CURRENT
-     * =========================================================
+     * Scenario B - estrategia "current".
+     *
+     * A velocidade-alvo e definida a partir da velocidade
+     * observada no instante do alerta. A desaceleracao necessaria
+     * e calculada em funcao da distancia disponivel ate o lider.
      */
     if (reactionStrategy == "current") {
 
@@ -400,9 +397,11 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
     }
 
     /*
-     * =========================================================
-     * SCENARIO C - ESTRATEGIA PROGRESSIVE
-     * =========================================================
+     * Scenario C - estrategia "progressive".
+     *
+     * A frenagem e distribuida de forma progressiva usando
+     * a distancia de controle e a velocidade do lider como
+     * referencias para evitar uma reducao excessivamente brusca.
      */
     if (reactionStrategy == "progressive") {
 
@@ -507,90 +506,19 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
     }
 
     /*
-     * =========================================================
-     * SCENARIO D - ESTRATEGIA PLANNED
-     * =========================================================
+     * Scenario D - estrategia "planned".
      *
-     * O objetivo é levar o V2 para aproximadamente 5 m atrás
-     * do V1, considerando desde o instante do alerta:
+     * A cada ciclo de controle, a desaceleracao necessaria e
+     * recalculada usando:
      *
      *   - velocidade atual do V2;
      *   - velocidade atual do lider;
-     *   - distancia atual;
-     *   - distancia final desejada.
-     *
-     * Depois que o plano inicial é calculado, a cada ciclo fazemos
-     * uma pequena correção baseada no erro de distância restante.
-     *
-     * O valor planejado de desaceleração funciona como referência
-     * e a correção aumenta somente quando o V2 se aproxima demais
-     * do lider.
-     */
-    /*
-     * =========================================================
-     * SCENARIO D - FRENAGEM PLANEJADA E SUAVIZADA
-     * =========================================================
-     *
-     * No instante em que o alerta chega:
-     *
-     *   1. mede velocidade do V2;
-     *   2. mede velocidade do lider;
-     *   3. mede a distancia atual;
-     *   4. calcula a distancia disponivel ate 5 m;
-     *   5. calcula a desaceleracao necessaria para chegar
-     *      ao ponto planejado;
-     *
-     * Depois disso, a desaceleracao e suavizada ao longo
-     * da reacao para evitar uma freada brusca proxima ao V1.
-     */
-
-    /*
-     * =========================================================
-     * SCENARIO D - FRENAGEM PLANEJADA
-     * =========================================================
-     *
-     * O planejamento e feito uma unica vez quando o alerta chega.
-     *
-     * Objetivo:
-     *
-     *     velocidade inicial -> 0 m/s
-     *     distancia disponivel -> plannedTargetDistance
-     *
-     * Depois disso a velocidade alvo e atualizada apenas
-     * pela desaceleracao planejada.
-     *
-     * Nao existe uma segunda fase de frenagem de emergencia.
-     */
-
-    /*
-     * =========================================================
-     * SCENARIO D - CONTROLE DINAMICO PELA DISTANCIA RELATIVA
-     * =========================================================
-     *
-     * O calculo e renovado a cada 0,1 s utilizando:
-     *
-     *   - velocidade atual do V2;
-     *   - velocidade atual do V1;
      *   - distancia atual entre os veiculos;
-     *   - distancia alvo de 5 m.
+     *   - distancia-alvo de 5 m.
      *
-     * Dessa forma, o V1 pode continuar se movendo depois do alerta
-     * sem invalidar o planejamento inicial.
-     */
-
-    /*
-     * =========================================================
-     * SCENARIO D - CONTROLE DINAMICO
-     * =========================================================
-     *
-     * A desaceleracao e calculada continuamente em funcao de:
-     *
-     *   - velocidade atual do V2;
-     *   - velocidade atual do V1;
-     *   - distancia atual entre os veiculos;
-     *   - distancia alvo de 5 m.
-     *
-     * O maxReactionDecel e somente um limite de seguranca.
+     * O objetivo e reduzir a velocidade relativa para que o V2
+     * se aproxime do lider de forma controlada. A desaceleracao
+     * calculada e limitada pelo valor permitido pelo veiculo.
      */
 
     if (reactionStrategy == "planned") {
@@ -611,9 +539,9 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
             );
 
         /*
-         * Se a distancia alvo foi atingida, fazemos uma
-         * reducao progressiva da velocidade em vez de mandar
-         * imediatamente velocidade zero.
+         * Se a distancia-alvo ja foi atingida, a velocidade
+         * e reduzida de forma progressiva para evitar uma parada
+         * instantanea.
          */
         if (controlDistance <= 0.0) {
 
@@ -636,8 +564,8 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
         }
 
         /*
-         * Se V2 ja esta mais lento que o lider, nao ha
-         * necessidade de continuar freando.
+         * Se V2 ja esta na velocidade do lider ou abaixo dela,
+         * nao ha necessidade de continuar desacelerando.
          */
         if (currentSpeed <= leaderSpeed) {
 
@@ -648,14 +576,13 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
         }
 
         /*
-         * =====================================================
-         * DESACELERACAO NECESSARIA
-         * =====================================================
+         * Desaceleracao necessaria para reduzir a velocidade do V2
+         * ate aproximadamente a velocidade do lider na distancia
+         * restante.
          *
-         * Queremos que V2 chegue a aproximadamente a velocidade
-         * do lider quando a distancia chegar a 5 m.
+         * Equacao de movimento:
          *
-         * vf^2 = vi^2 - 2*a*d
+         *   vf^2 = vi^2 - 2*a*d
          *
          * Portanto:
          *
@@ -677,11 +604,10 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
             );
 
         /*
-         * A desaceleracao normal e dinamica.
-         *
-         * maxReactionDecel nao define a frenagem:
-         * apenas impede que o algoritmo peca uma frenagem
-         * acima do limite de seguranca.
+         * A desaceleracao e recalculada dinamicamente.
+         * O limite do veiculo atua apenas como restricao maxima;
+         * ele nao determina a desaceleracao aplicada em todos
+         * os ciclos.
          */
         plannedReactionDecel =
             std::min(
@@ -694,7 +620,7 @@ double AccidentAlertApp::calculateSafeReactionSpeed(double currentSpeed)
 
         /*
          * Converte a desaceleracao calculada em uma variacao
-         * de velocidade para o proximo intervalo.
+         * de velocidade para o proximo intervalo de controle.
          */
         double dt =
             reactionMonitorInterval.dbl();
@@ -769,7 +695,8 @@ void AccidentAlertApp::onWSM(BaseFrame1609_4* wsm)
             << endl;
 
     /*
-     * O veiculo que recebe o alerta inicia a reacao.
+     * O veiculo receptor inicia a reacao V2X quando possui
+     * os recursos de mobilidade e comunicacao disponiveis.
      */
     if (getParentModule()->getIndex() != 0 &&
         traciVehicle != nullptr &&
@@ -793,7 +720,7 @@ void AccidentAlertApp::onWSM(BaseFrame1609_4* wsm)
         timeToReducedSpeed = -1;
         reactionDistance = 0;
 
-        // Reinicia o plano do Scenario D para este alerta.
+        // Reinicia os estados internos da estrategia planejada.
         plannedReactionInitialized = false;
         plannedReactionDecel = 0.0;
         plannedTargetDistance = 5.0;
@@ -804,18 +731,17 @@ void AccidentAlertApp::onWSM(BaseFrame1609_4* wsm)
         lastReactionPosition = curPosition;
 
         /*
-        * Primeira decisao de velocidade baseada na distancia
-        * ate o veiculo a frente.
-        */
+         * Define a primeira velocidade de reacao a partir
+         * da situacao atual do veiculo e do lider.
+         */
         double initialReactionSpeed =
             calculateSafeReactionSpeed(speedAtAlert);
 
         /*
-         * Primeira aplicacao do Scenario D.
-         *
-         * Tambem respeita o limite de desaceleracao por
-         * intervalo, sem transformar esse limite em uma
-         * desaceleracao fixa.
+         * Na estrategia planejada, a primeira aplicacao tambem
+         * respeita o limite de desaceleracao do veiculo por
+         * intervalo de controle. Esse limite funciona como
+         * restricao de seguranca, nao como valor fixo de frenagem.
          */
         if (reactionStrategy == "planned") {
 
@@ -880,8 +806,10 @@ void AccidentAlertApp::handlePositionUpdate(cObject* obj)
     DemoBaseApplLayer::handlePositionUpdate(obj);
 
     /*
-     * Diagnostico temporario apos a reacao V2X.
-     * Executa somente para o V2 e no maximo uma vez por segundo.
+     * Acompanha o comportamento do V2 apos a reacao, permitindo
+     * verificar a retomada da velocidade, a distancia para o lider
+     * e a continuidade da rota. O diagnostico e registrado no
+     * maximo uma vez por segundo.
      */
     if (getParentModule()->getIndex() == 1 &&
         !reactionActive &&
