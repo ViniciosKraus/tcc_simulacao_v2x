@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <basedir path="/home/vinicioskraus/vanet-workspace/tcc-v2x/veins-example/sumo/"/>
+    <copy file="ifsc_map.net.xml"/>
+    <copy file="tcc_cenario_desvio.rou.xml"/>
+    <copy file="tcc_cenario_desvio.sumocfg" type="config"/>
+    <seed value="0"/>
+    <suicide-on-end/>
+    <command name="sumo" arguments="-c tcc_cenario_desvio.sumocfg --remote-port 9999 --timeout 1000"/>
+</launch>

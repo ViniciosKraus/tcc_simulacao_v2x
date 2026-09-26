@@ -29,6 +29,9 @@ private:
     bool reducedSpeedReached = false;
     bool haveLastReactionPosition = false;
 
+    bool rerouteTriggered = false;          // Para desvio
+    simtime_t lowSpeedStart = -1;           // Para fallback
+
     int alertsSent = 0;
     int alertsReceived = 0;
 
@@ -36,7 +39,6 @@ private:
     omnetpp::simtime_t minAlertDelay = -1;
     omnetpp::simtime_t maxAlertDelay = -1;
 
-    // Metricas da reacao ao alerta
     omnetpp::simtime_t alertReceiveTime = -1;
     omnetpp::simtime_t timeToReducedSpeed = -1;
 
@@ -45,18 +47,20 @@ private:
     double minSpeedAfterAlert = -1;
     double reactionDistance = 0;
 
-    // Scenario D: frenagem planejada
     bool plannedReactionInitialized = false;
     double plannedReactionDecel = 0.0;
     double plannedTargetDistance = 5.0;
 
-
-    // Parametros da reacao V2X baseada em distancia
     std::string reactionStrategy = "current";
     double reactionSpeedFactor = 0.5;
     double safeDistance = 10.0;
 
-    // Metricas adicionais
+    // SPI calculado em relação à velocidade de fluxo livre da via atual.
+    // Não usamos histórico da via, porque o histórico pode ficar preso em
+    // congestionamento e mascarar o estado real da estrada.
+    double freeFlowSpeed = 0.0;
+    double congestionSpiThreshold = 50.0;
+
     double calculatedReactionDecel = 0.0;
     double currentLeaderDistance = -1.0;
     double progressiveAppliedDecel = 0.0;
@@ -66,10 +70,14 @@ private:
 
     veins::Coord lastReactionPosition;
 
-    // Funcao auxiliar do controlador de reacao
+    // Novo: para envio periódico de alertas de congestionamento
+    simtime_t lastCongestionAlertTime = -1;
+
+    simtime_t effectiveDetourEntryTime = -1;
+    simtime_t commonRoadEntryTime = -1;
+
     double calculateSafeReactionSpeed(double currentSpeed);
 
-    // Diagnostico temporario do comportamento apos a reacao
     omnetpp::simtime_t nextDiagnosticTime = 0;
 };
 

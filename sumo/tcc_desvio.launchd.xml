@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <basedir path="/home/vinicioskraus/vanet-workspace/tcc-v2x/veins-example/sumo/"/>
+    <copy file="ifsc_map.net.xml"/>
+    <copy file="tcc_cenario_desvio.rou.xml"/>
+    <copy type="config" file="tcc_desvio.sumocfg"/>
+    <seed value="0"/>
+</launch>

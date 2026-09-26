@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+
+    <!-- 100 km/h = 27.78 m/s. -->
+    <vType id="car_normal" accel="2.6" decel="4.5" sigma="0.5" length="4.5" maxSpeed="27.78"
+           lcStrategic="0" lcCooperative="0" lcSpeedGain="0" lcKeepRight="1"/>
+    <vType id="car_v2x"   accel="2.6" decel="4.5" sigma="0.3" length="4.5" maxSpeed="27.78"
+           lcStrategic="0" lcCooperative="0" lcSpeedGain="0" lcKeepRight="1"/>
+        <!-- V3 permanece preso atrás da fila e não tenta ultrapassar para a faixa
+             livre. A fila deve bloquear a rodovia e deixar o veículo V2X decidir o
+             desvio a partir do ponto de ramificação. -->
+        <vType id="car_comparison_no_v2x" accel="2.6" decel="4.5" sigma="0.5" length="4.5" maxSpeed="27.78"
+             lcStrategic="0" lcCooperative="0" lcSpeedGain="0" lcKeepRight="1"/>
+    
+    <!-- Fila lenta do cenário: 4 m/s = 14,4 km/h para deixar o desvio
+         significativamente mais vantajoso do que seguir pela rodovia bloqueada. -->
+    <vType id="slow_car" accel="1.0" decel="3.0" sigma="0.8" length="4.5" maxSpeed="4"/>
+
+    <!-- A fila lenta deve começar no trecho 529303430, que é o ramo principal da
+         rodovia onde o congestionamento real bloqueia o fluxo. Isso evita posições
+         inválidas em 529303429 e mantém a rota da fila compatível com o tamanho do edge. -->
+    <route id="route_slow" edges="529303430 529303407 529303406"/>
+    <route id="route_highway" edges="529303429 529303430 529303407 529303406"/>
+    <route id="route_marginal" edges="529303429 484273114 79290812#0 79290812#1 978180644 978180645 484273113 529303407 529303406"/>
+
+    <!-- Veículos lentos próximos ao ponto de ramificação da rodovia. A fila deve
+         começar antes do ponto de decisão para que a rota marginal seja realmente
+         mais vantajosa quando o veículo ainda estiver em 529303429. -->
+    <!-- A fila lenta deve bloquear o trecho final de 529303430 e não a entrada da
+         bifurcação. Os veículos V2X precisam chegar primeiro ao ponto de decisão
+         em 529303429 para conseguir avaliar e acionar o desvio. -->
+    <!-- A fila e os veículos principais são iniciados praticamente no início do
+         cenário para que os nós 0..8 estejam presentes desde o começo da simulação.
+         Isso evita a sensação de que o tráfego só aparece mais tarde e reduz o
+         atraso até o ponto de decisão do desvio. -->
+    <vehicle id="slow_0" type="slow_car" route="route_slow" depart="0" departLane="0" departPos="5"/>
+    <vehicle id="slow_1" type="slow_car" route="route_slow" depart="1" departLane="1" departPos="20"/>
+    <vehicle id="slow_2" type="slow_car" route="route_slow" depart="2" departLane="0" departPos="35"/>
+    <vehicle id="slow_3" type="slow_car" route="route_slow" depart="3" departLane="1" departPos="50"/>
+    <vehicle id="slow_4" type="slow_car" route="route_slow" depart="4" departLane="0" departPos="65"/>
+    <vehicle id="slow_5" type="slow_car" route="route_slow" depart="5" departLane="1" departPos="80"/>
+
+    <!-- V1,V2 e V3 começam logo no início para que os nós 6, 7 e 8 apareçam e
+         possam seguir a rodovia e decidir o desvio antes da fila bloquear totalmente a via. -->
+    <vehicle id="V1" type="car_v2x" route="route_highway" depart="6" departSpeed="max" departPos="120" departLane="1"/>
+    <vehicle id="V2" type="car_v2x" route="route_highway" depart="7" departSpeed="max" departPos="120" departLane="2">
+        <param key="has_v2x" value="true"/>
+    </vehicle>
+
+    <!-- Veículo de comparação sem V2X: surge junto com V1/V2, mas não recebe/entende
+         alertas V2X e, portanto, entra na fila e permanece bloqueado conforme o cenário. -->
+    <vehicle id="V3_no_v2x" type="car_comparison_no_v2x" route="route_highway" depart="8" departSpeed="max" departPos="130" departLane="1"/>
+
+</routes>
