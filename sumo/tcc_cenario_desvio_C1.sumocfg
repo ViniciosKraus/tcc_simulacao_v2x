@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <input>
+        <net-file value="ifsc_map_workzone.net.xml"/>
+        <route-files value="tcc_cenario_desvio_C1.rou.xml"/>
+        <additional-files value="tcc_cenario_desvio.obra.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+
+        <end value="5000"/>
+    </time>
+</configuration>

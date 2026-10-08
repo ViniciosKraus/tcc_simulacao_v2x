@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+
+    <!-- ===== Distribuição de automóveis e caminhões ===== -->
+    <vTypeDistribution id="dist_v2x">
+        <vType id="car_v2x"    accel="2.6" decel="4.5" sigma="0.3" length="4.5"
+               maxSpeed="27.78"
+               probability="0.35"/>
+        <vType id="car_normal" accel="2.6" decel="4.5" sigma="0.5" length="4.5"
+               maxSpeed="27.78"
+               probability="0.35"/>
+        <vType id="truck_heavy" vClass="truck" accel="1.0" decel="4.5" sigma="0.5"
+               length="12.0" maxSpeed="22.22"
+               probability="0.30"/>
+    </vTypeDistribution>
+
+    <!-- ===== Rotas ===== -->
+    <route id="route_highway"  edges="529303429 529303430 529303430.431 529303430.631 529303407 529303406"/>
+    <route id="route_marginal" edges="529303429 484273114 79290812#0 79290812#1 978180644 978180645 484273113 529303407 529303406"/>
+
+    <!-- ===== Tráfego com volume aumentado para gerar congestionamento ===== -->
+    <flow id="f_highway" type="dist_v2x" route="route_highway"
+          begin="0" end="4900" vehsPerHour="3000"
+          departLane="allowed" departSpeed="max"/>
+
+</routes>
