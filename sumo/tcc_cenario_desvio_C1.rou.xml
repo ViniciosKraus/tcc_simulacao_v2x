@@ -6,7 +6,7 @@
         <vType id="car_v2x"    accel="2.6" decel="4.5" sigma="0.3" length="4.5"
                maxSpeed="27.78"
                probability="0.00"/>
-        <vType id="car_normal" accel="2.6" decel="4.5" sigma="0.5" length="4.5"
+        <vType id="car_normal" accel="2.6" decel="4.5" sigma="0.3" length="4.5"
                maxSpeed="27.78"
                probability="0.70"/>
         <vType id="truck_heavy" vClass="truck" accel="1.0" decel="4.5" sigma="0.5"
