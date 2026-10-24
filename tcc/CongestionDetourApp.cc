@@ -215,20 +215,13 @@ bool shouldEvaluateDetour(veins::TraCICommandInterface::Vehicle* traciVehicle,
     const double effectiveFreeFlowSpeed = estimateFreeFlowSpeed(traciVehicle,
         commandInterface,
         freeFlowSpeed > 0.0 ? freeFlowSpeed : 27.78);
-    const double spi = computeSpeedPerformanceIndex(currentSpeed, effectiveFreeFlowSpeed);
     const double senderSpi = computeSpeedPerformanceIndex(senderSpeed, effectiveFreeFlowSpeed);
-    const auto leaderInfo = traciVehicle->getLeader(200.0);
     const auto plannedRoads = traciVehicle->getPlannedRoadIds();
     const bool beforeBranch = isOnHighwayApproach(traciVehicle, 200.0);
-    const bool leaderBlocked = !leaderInfo.first.empty() && leaderInfo.second < 30.0;
-    const bool localSlowdown  = currentSpeed < effectiveFreeFlowSpeed * 0.80;
-    const bool remoteSlowdown = senderSpi < congestionSpiThreshold;
-    const bool moderateSlowdown = localSlowdown || remoteSlowdown;
-    const bool congestionAhead = spi < 80.0 || senderSpi < congestionSpiThreshold || leaderBlocked || moderateSlowdown;
+    const bool congestionAlert = senderSpi < congestionSpiThreshold;
     const bool stillOnMainPath = currentRoad == "529303429";
-    const bool hasRealCongestion = congestionAhead && (leaderBlocked || moderateSlowdown);
     const bool worthwhileDetour = detourIsWorthwhile(traciVehicle, commandInterface, currentSpeed);
-    const bool shouldEvaluate = beforeBranch && stillOnMainPath && worthwhileDetour && hasRealCongestion;
+    const bool shouldEvaluate = beforeBranch && stillOnMainPath && worthwhileDetour && congestionAlert;
 
     EV_INFO << "V2X: CHECK_DETOUR | node=" << (mobility ? mobility->getExternalId() : "?")
             << " | road=" << currentRoad
@@ -236,14 +229,10 @@ bool shouldEvaluateDetour(veins::TraCICommandInterface::Vehicle* traciVehicle,
             << " route=" << currentRoute
             << " speed=" << currentSpeed
             << " senderSpeed=" << senderSpeed
-            << " spi=" << spi
             << " senderSpi=" << senderSpi
             << " freeFlowSpeed=" << effectiveFreeFlowSpeed
             << " beforeBranch=" << beforeBranch
-            << " congestionAhead=" << congestionAhead
-            << " moderateSlowdown=" << moderateSlowdown
-            << " leaderBlocked=" << leaderBlocked
-            << " hasRealCongestion=" << hasRealCongestion
+            << " congestionAlert=" << congestionAlert
             << " worthwhileDetour=" << worthwhileDetour
             << " stillOnMainPath=" << stillOnMainPath
             << " plannedRoadsSize=" << plannedRoads.size()
