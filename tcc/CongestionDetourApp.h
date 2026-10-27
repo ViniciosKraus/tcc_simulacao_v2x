@@ -26,10 +26,6 @@ private:
 
     bool rerouteTriggered = false;          // Para desvio
 
-    // SPI calculado em relação à velocidade de fluxo livre da via atual.
-    // Não usamos histórico da via, porque o histórico pode ficar preso em
-    // congestionamento e mascarar o estado real da estrada.
-    double freeFlowSpeed = 0.0;
     double congestionSpiThreshold = 50.0;
     int congestionSpiPersistenceChecks = 10;
     int lowSpiConsecutiveChecks = 0;

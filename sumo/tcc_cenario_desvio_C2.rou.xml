@@ -20,7 +20,7 @@
 
     <!-- ===== Tráfego com volume aumentado para gerar congestionamento ===== -->
     <flow id="f_highway" type="dist_v2x" route="route_highway"
-          begin="0" end="3600" number="3000"
+          begin="60" end="4380" number="3000"
           departLane="allowed" departSpeed="max"/>
 
 </routes>

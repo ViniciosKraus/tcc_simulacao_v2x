@@ -8,7 +8,6 @@ simple CongestionDetourApp extends veins.modules.application.ieee80211p.DemoBase
         bool enableV2X = default(true);
         bool useVehicleTypeForV2X = default(false);
         double congestionMonitorInterval @unit("s") = default(0.1s);
-        double freeFlowSpeed @unit("mps") = default(0mps);
         double congestionSpiThreshold = default(50.0);
         int congestionSpiPersistenceChecks = default(10);
         @class(CongestionDetourApp);

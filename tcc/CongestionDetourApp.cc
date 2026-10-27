@@ -106,34 +106,32 @@ bool isOnHighwayApproach(veins::TraCICommandInterface::Vehicle* traciVehicle, do
 //  baseadas em veículos que fazem parte da fila de lentidão.
 // -----------------------------------------------------------------------------
 double estimateFreeFlowSpeed(veins::TraCICommandInterface::Vehicle* traciVehicle,
-    veins::TraCICommandInterface* commandInterface,
-    double fallback = 27.78)
+    veins::TraCICommandInterface* commandInterface)
 {
-    if (traciVehicle == nullptr) {
-        return fallback;
+    if (traciVehicle == nullptr || commandInterface == nullptr) {
+        throw cRuntimeError("Cannot estimate free-flow speed without a vehicle and TraCI interface");
     }
 
-    const double vehicleMaxSpeed = traciVehicle->getMaxSpeed();
-    if (vehicleMaxSpeed > 0.0) {
-        fallback = vehicleMaxSpeed;
+    const std::string laneId = traciVehicle->getLaneId();
+    if (laneId.empty()) {
+        throw cRuntimeError("Cannot estimate free-flow speed: vehicle has no current lane");
     }
 
-    if (commandInterface != nullptr) {
-        try {
-            const std::string laneId = traciVehicle->getLaneId();
-            if (!laneId.empty()) {
-                auto lane = commandInterface->lane(laneId);
-                const double laneMaxSpeed = lane.getMaxSpeed();
-                if (laneMaxSpeed > 0.0) {
-                    return std::min(laneMaxSpeed, fallback);
-                }
-            }
-        } catch (const std::exception&) {
-            // Fallback para o limite do veículo se a via não expuser o valor.
-        }
+    double laneMaxSpeed;
+    try {
+        auto lane = commandInterface->lane(laneId);
+        laneMaxSpeed = lane.getMaxSpeed();
+    } catch (const std::exception& e) {
+        throw cRuntimeError("Cannot read speed limit for current lane %s: %s",
+            laneId.c_str(), e.what());
     }
 
-    return std::max(0.1, fallback);
+    if (laneMaxSpeed <= 0.0) {
+        throw cRuntimeError("Invalid speed limit for current lane %s: %g",
+            laneId.c_str(), laneMaxSpeed);
+    }
+
+    return laneMaxSpeed;
 }
 
 double computeSpeedPerformanceIndex(double currentSpeed, double freeFlowSpeed)
@@ -200,8 +198,7 @@ bool detourIsWorthwhile(veins::TraCICommandInterface::Vehicle* traciVehicle,
 bool shouldEvaluateDetour(veins::TraCICommandInterface::Vehicle* traciVehicle,
     const veins::TraCIMobility* mobility,
     veins::TraCICommandInterface* commandInterface,
-    double senderSpeed, 
-    double freeFlowSpeed = 0.0,
+    double senderSpi,
     double congestionSpiThreshold = 50.0)
 {
     if (traciVehicle == nullptr || mobility == nullptr || !isHighwayDetourCandidate(traciVehicle)) {
@@ -212,10 +209,6 @@ bool shouldEvaluateDetour(veins::TraCICommandInterface::Vehicle* traciVehicle,
     const std::string currentRoute = traciVehicle->getRouteId();
     const double currentPos = traciVehicle->getLanePosition();
     const double currentSpeed = mobility->getSpeed();
-    const double effectiveFreeFlowSpeed = estimateFreeFlowSpeed(traciVehicle,
-        commandInterface,
-        freeFlowSpeed > 0.0 ? freeFlowSpeed : 27.78);
-    const double senderSpi = computeSpeedPerformanceIndex(senderSpeed, effectiveFreeFlowSpeed);
     const auto plannedRoads = traciVehicle->getPlannedRoadIds();
     const bool beforeBranch = isOnHighwayApproach(traciVehicle, 200.0);
     const bool congestionAlert = senderSpi < congestionSpiThreshold;
@@ -228,9 +221,7 @@ bool shouldEvaluateDetour(veins::TraCICommandInterface::Vehicle* traciVehicle,
             << " pos=" << currentPos
             << " route=" << currentRoute
             << " speed=" << currentSpeed
-            << " senderSpeed=" << senderSpeed
             << " senderSpi=" << senderSpi
-            << " freeFlowSpeed=" << effectiveFreeFlowSpeed
             << " beforeBranch=" << beforeBranch
             << " congestionAlert=" << congestionAlert
             << " worthwhileDetour=" << worthwhileDetour
@@ -392,16 +383,11 @@ void CongestionDetourApp::initialize(int stage)
         }
         congestionMonitorInterval = par("congestionMonitorInterval");
 
-        freeFlowSpeed = par("freeFlowSpeed").doubleValue();
         congestionSpiThreshold = par("congestionSpiThreshold").doubleValue();
         congestionSpiPersistenceChecks = par("congestionSpiPersistenceChecks").intValue();
         if (congestionSpiPersistenceChecks <= 0) {
             throw cRuntimeError("congestionSpiPersistenceChecks must be greater than zero");
         }
-        if (freeFlowSpeed <= 0.0) {
-            freeFlowSpeed = estimateFreeFlowSpeed(traciVehicle, mobility->getCommandInterface(), 27.78);
-        }
-
         if (getParentModule()->getIndex() != 0 && enableV2X) {
             congestionMonitorMsg = new cMessage("congestionMonitor");
             scheduleAt(simTime() + congestionMonitorInterval, congestionMonitorMsg);
@@ -420,8 +406,7 @@ void CongestionDetourApp::handleSelfMsg(cMessage* msg)
         if (enableV2X && getParentModule()->getIndex() != 0) {
             const double speed = mobility->getSpeed();
             const double effectiveFreeFlowSpeed = estimateFreeFlowSpeed(
-                traciVehicle, mobility->getCommandInterface(),
-                freeFlowSpeed > 0.0 ? freeFlowSpeed : 27.78);
+                traciVehicle, mobility->getCommandInterface());
             const double spi = computeSpeedPerformanceIndex(speed, effectiveFreeFlowSpeed);
             if (spi < congestionSpiThreshold) {
                 if (lowSpiConsecutiveChecks < congestionSpiPersistenceChecks) {
@@ -438,9 +423,9 @@ void CongestionDetourApp::handleSelfMsg(cMessage* msg)
                 populateWSM(wsm);
                 wsm->setSenderAddress(myId);
                 wsm->setSerial(++alertSequence);
-                char speedStr[16];
-                std::snprintf(speedStr, sizeof(speedStr), "%.2f", speed);
-                wsm->setDemoData(speedStr);
+                char spiStr[16];
+                std::snprintf(spiStr, sizeof(spiStr), "%.2f", spi);
+                wsm->setDemoData(spiStr);
                 if (simTime().dbl() >= ALERT_METRIC_BEGIN) {
                     ++alertsSent;
                 }
@@ -482,7 +467,7 @@ void CongestionDetourApp::onWSM(BaseFrame1609_4* wsm)
         }
     }
 
-    const double senderSpeed = std::stod(alert->getDemoData());
+    const double senderSpi = std::stod(alert->getDemoData());
 
     if (rerouteTriggered || getParentModule()->getIndex() == 0 ||
         !isHighwayDetourCandidate(traciVehicle)) {
@@ -494,7 +479,7 @@ void CongestionDetourApp::onWSM(BaseFrame1609_4* wsm)
     const double currentPos = traciVehicle->getLanePosition();
 
     if (shouldEvaluateDetour(traciVehicle, mobility, mobility->getCommandInterface(),
-            senderSpeed, freeFlowSpeed, congestionSpiThreshold)) {
+            senderSpi, congestionSpiThreshold)) {
         const bool rerouted = tryAlternativeRoute(traciVehicle, mobility->getCommandInterface());
         rerouteTriggered = rerouted;
         if (rerouted) {
