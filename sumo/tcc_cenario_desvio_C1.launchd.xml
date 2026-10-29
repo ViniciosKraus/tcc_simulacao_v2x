@@ -5,7 +5,6 @@
     <copy file="tcc_cenario_desvio_C1.rou.xml"/>
     <copy file="tcc_cenario_desvio.obra.xml"/>
     <copy file="tcc_cenario_desvio_C1.sumocfg" type="config"/>
-    <seed value="0"/>
     <suicide-on-end/>
     <command name="sumo" arguments="-c tcc_cenario_desvio_C1.sumocfg --remote-port 9999 --timeout 1000"/>
 </launch>

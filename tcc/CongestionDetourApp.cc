@@ -11,8 +11,6 @@ using namespace omnetpp;
 using namespace veins;
 
 namespace {
-constexpr double ALERT_METRIC_BEGIN = 60.0;
-
 std::list<std::string> buildMarginalRoute()
 {
     return {
@@ -57,12 +55,8 @@ bool isHighwayDetourCandidate(veins::TraCICommandInterface::Vehicle* traciVehicl
     const std::string routeId = traciVehicle->getRouteId();
     const auto plannedRoads = traciVehicle->getPlannedRoadIds();
 
-    // Mantém a lógica robusta ao nome da rota gerada dinamicamente em SUMO.
-    // Nem todos os veículos apresentam route_highway/route_marginal fixos;
-    // por isso o critério principal é o ramo físico da via e os roadIds planejados.
-    if (routeId == "route_slow" || routeId.find("slow") != std::string::npos) {
-        return false;
-    }
+    // O critério principal é o ramo físico da via e os roadIds planejados;
+    // o SUMO pode atribuir identificadores dinâmicos às rotas.
     if (routeId == "route_marginal" || routeId.find("marginal") != std::string::npos) {
         return false;
     }
@@ -264,12 +258,6 @@ bool tryAlternativeRoute(veins::TraCICommandInterface::Vehicle* traciVehicle, ve
     }
 
     try {
-        const std::string routeId = traciVehicle->getRouteId();
-        if (routeId == "route_slow" || routeId.find("slow") != std::string::npos) {
-            EV_INFO << "V2X: ignora comparacao de rota para veiculo ja na fila lenta | route=" << routeId << endl;
-            return false;
-        }
-
         const std::string currentRoad = traciVehicle->getRoadId();
         const double currentPos = traciVehicle->getLanePosition();
         const bool onMainHighway = currentRoad == "529303429";
@@ -411,9 +399,7 @@ void CongestionDetourApp::handleSelfMsg(cMessage* msg)
                 char spiStr[16];
                 std::snprintf(spiStr, sizeof(spiStr), "%.2f", spi);
                 wsm->setDemoData(spiStr);
-                if (simTime().dbl() >= ALERT_METRIC_BEGIN) {
-                    ++alertsSent;
-                }
+                ++alertsSent;
                 sendDown(wsm);
                 lastCongestionAlertTime = simTime();
                 EV_INFO << "V2X: CONGESTION ALERT SENT by "
@@ -441,9 +427,7 @@ void CongestionDetourApp::onWSM(BaseFrame1609_4* wsm)
     auto* alert = dynamic_cast<TraCIDemo11pMessage*>(wsm);
     if (alert == nullptr) return;
 
-    if (simTime().dbl() >= ALERT_METRIC_BEGIN &&
-        alert->getCreationTime().dbl() >= ALERT_METRIC_BEGIN &&
-        alert->getSenderAddress() >= 0 && alert->getSerial() > 0) {
+    if (alert->getSenderAddress() >= 0 && alert->getSerial() > 0) {
         ++alertsReceived;
         const simtime_t latency = simTime() - alert->getCreationTime();
         if (latency >= SIMTIME_ZERO) {

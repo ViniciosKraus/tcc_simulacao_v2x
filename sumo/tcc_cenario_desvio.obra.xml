@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <additional>
     <rerouter id="obra_faixa_529303430" edges="529303430" pos="300">
-        <interval begin="60" end="20000">
+        <interval begin="0" end="20000">
             <closingLaneReroute id="529303430.431_0"/>
         </interval>
     </rerouter>
