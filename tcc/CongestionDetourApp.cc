@@ -177,21 +177,6 @@ bool detourIsWorthwhile(veins::TraCICommandInterface::Vehicle* traciVehicle,
             << " gainRatio=" << benefitMargin
             << " currentSpeed=" << currentSpeed << endl;
 
-    // Regra realista para este cenário: quando o veículo já está em congestionamento
-    // severo no ponto de bifurcação, o custo estimado da rota principal pode continuar
-    // parecendo menor mesmo com a fila trava, porque a análise de tempo estático não
-    // reflete o tempo de espera real. Nesse caso, a marginal só é aceita quando não
-    // está claramente pior do que a rota principal.
-    const bool severeCongestion = currentSpeed < 5.0;
-    const bool alternativeNotCatastrophic = alternativeCost < currentCost * 1.50;
-
-    if (severeCongestion) {
-        EV_INFO << "V2X: DETOUR_SEVERE_CONGESTION | severeCongestion=" << severeCongestion
-                << " alternativeNotCatastrophic=" << alternativeNotCatastrophic
-                << " currentSpeed=" << currentSpeed << endl;
-        return alternativeNotCatastrophic;
-    }
-
     return alternativeCost < currentCost * 0.75;
 }
 
